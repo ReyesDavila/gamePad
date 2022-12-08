@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="utf-0">
+        <meta name="viewport" content="user-scalable=no">
+        <link rel="shorcut icon" href="favicon.png">
+        <title>gamePadDixon</title>
+    </head>
+    <body>
+        
+        <div class="caja" id="caja0"></div>
+        <div class="caja" id="caja1"></div>
+        <div class="caja" id="caja2"></div>
+        <div class="caja" id="caja3"></div>
+        <style>.caja{position: absolute; width: 5vw; height: 5vw}</style>
+
+        <div id="surface">
+            <div class="joystick" id="joystick_0"><div class="joystick_palanca" id="palanca_0"></div></div>
+            <div class="joystick" id="joystick_1"><div class="joystick_palanca" id="palanca_1"></div></div>
+            <div class="joystick" id="joystick_2"><div class="joystick_palanca" id="palanca_2"></div></div>
+            <div class="joystick" id="joystick_3"><div class="joystick_palanca" id="palanca_3"></div></div>
+            <div id="surface_tactil"></div>
+        </div>
+
+        <style>
+            *{
+                background: black;
+                color: white;
+                padding: 0px;
+                margin: 0px;
+                -webkit-touch-callout: none;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -khtml-user-select: none;
+                -ms-user-select:none;
+                overscroll-behavior: contain; 
+                overscroll-behavior-y: contain; 
+                touch-action: none;
+                font-size: 1.2em;
+            }
+
+            #surface{
+                position: absolute;
+                background: transparent;
+                width: 95vw;
+                height: 95vh;
+                left: 2.5vw;
+                top: 2.5vh;
+                /*border: 2px solid white;*/
+            }
+
+            #surface_tactil{
+                position: absolute;
+                background: transparent;
+                top:0px;
+                left:0px;
+                width: 100%;
+                height: 100%;
+               /*border: 2px solid aqua;*/
+            }
+
+            .joystick{
+                background: transparent;
+                position: absolute;
+                width: 30vw;
+                height: 30vw;
+                border: 2px solid white;
+                border-radius: 50%;
+                opacity: 0.5;
+            }
+
+            .joystick_palanca{
+                background: white;
+                position: absolute;
+                width: 40%;
+                height: 40%;
+                /*border: 2px solid white;*/
+                border-radius: 50%;
+                left: 30%;
+                top: 30%;
+                opacity: 0.5;
+            }
+
+        </style>
+        <script>
+        //Variables
+        {
+            var list_elements = [];
+            var list_gamePads = [];
+            var touchDevice = ('ontouchstart' in document.documentElement);
+            var mouse_x = [0,0,0,0,0,0,0,0,0,0];
+            var mouse_y = [0,0,0,0,0,0,0,0,0,0];
+            var touch_count = 0;
+        }
+
+        //Elementos
+        {
+            var surface = document.getElementById("surface");
+            var surface_tactil = document.getElementById("surface_tactil");
+        }
+
+        //funciones game maker
+        {
+            function abs(x){return Math.abs(x)}
+            function floor(x){return Math.trunc(x)}
+            function string_pos(substr,str){return str.indexOf(substr)+1}
+            function string_replace(str,substr,newstr){return str.replace(substr,newstr)}
+            function string_replace_all(str,substr,newstr){while(str.includes(substr)){str = str.replace(substr,newstr)}return str}
+            function chr(val){return String.fromCodePoint(val)}
+        }
+
+        //Funciones
+        {
+
+        //Función Ajustar ventana.
+        {
+            //Para detectar que se ha cambiado el alto y/o el ancho de la ventana
+            //se creará un objeto que contiene las caracteristicas de la ventana: ancho, alto y orientación.
+            //Ejemplo: 
+            //ancho = ventana.width;
+            //alto = ventana.height;
+            //orientacion = ventana.orientatión.
+            ventana = {width: window.innerWidth,height: window.innerHeight,orientation: "portrait"}
+            window.addEventListener("resize", function(){ajustar_ventana()})
+            function ajustar_ventana(){
+                    ventana.width = window.innerWidth;
+                    ventana.height =window.innerHeight;
+                    ventana.orientation = "portrait";
+                    if(window.innerWidth>window.innerHeight){ventana.orientation="landspace"}
+                    ajustar_elementos(list_elements);
+                }
+        }
+
+        //Ajustar elementos
+        {
+            ////Para darle a los elementos un tamaño proporcional aqunque se cambie la orientación del dispositivo.
+            ///El porcentaje se mide según el ancho de la ventana del pc cuando se encuentre en landspace.
+
+            function ajustar_elementos(list_elements){
+                console.log("ajustando")
+                for(index=0; index<list_elements.length; index++)
+                {
+                    var element = list_elements[index]["element"];
+                    var porcentaje_ancho = list_elements[index]["porcentaje_ancho"];
+                    var porcentaje_alto = list_elements[index]["porcentaje_alto"];
+                    var proporcion = porcentaje_ancho/porcentaje_alto;
+                    var ancho = porcentaje_ancho*ventana.width/100;
+                    if(ventana.orientation == "portrait"){ancho = porcentaje_ancho*ventana.height/100;}
+                    alto = ancho/proporcion;
+                    element.style.width = ancho+"px";
+                    element.style.height = alto+"px";
+                }
+            }
+
+            function agregar_elemento(element, porcentaje_ancho, porcentaje_alto){
+                list_elements.push({"element": element, "porcentaje_ancho": porcentaje_ancho, "porcentaje_alto": porcentaje_alto})
+            }
+
+        }
+
+        //Crear objeto sin usar clase
+        {
+            //Para crear objetos de un objeto modelo sin usar clases.
+           //Surface es el div o elemento que contendrá los otros elementos representativos de los objetos.
+           //Object_model: es el objeto modelo.
+           //Este script trabaja con la función agregar_elemento y ajustar_elementos.
+           function instance_create(name, object_model, width, height){
+                var object = JSON.parse(JSON.stringify(object_model))
+                object.index = list_gamePads
+.length;
+                var name = name+"_"+object.index;
+                object.element = document.getElementById(name);
+                list_gamePads
+.push(object);
+                list_elements.push({"element":object.element,"porcentaje_ancho": width, "porcentaje_alto": height});
+                return object
+            }
+        }
+   
+        //Datos elemento
+        {
+            //Para obtener datos de un elemento html.
+            function datos_elemento(elemento, dato)
+            {
+                return elemento.getBoundingClientRect()[dato];
+            }
+
+        }
+
+        //Posicion del mouse
+        {
+        //Para obtener la posicion del mouse en la página.
+        //Las variables mouse_x y mouse_y almacenarán la posición del mouse.
+        //La variable mouse_count almacenará la cantidad de touches o presiones realizadas en la pantalla.
+        //Necesita: 
+        //var touchDevice = ('ontouchstart' in document.documentElement);
+        //var mouse_x = [0,0,0,0,0,0,0,0,0,0,0]
+        //var mouse_y = [0,0,0,0,0,0,0,0,0,0,0]
+        //var mouse_count = 0
+        //function floor(x){return Math.trunc(x);}
+
+        function ajustar_mouse(element)
+        {
+            if(touchDevice)
+            {
+                //COORDENADAS DEL TOUCH
+                element.addEventListener("touchstart", countTouches, false);
+                element.addEventListener("touchmove", countTouches, false);
+                element.addEventListener("touchend", countTouches, false);
+                
+                function countTouches(event)
+                {
+                    mouse_x = [0,0,0,0,0,0,0,0,0,0];
+                    mouse_y = [0,0,0,0,0,0,0,0,0,0];
+                    touch_count = event.targetTouches.length;
+                    for(index=0;index<touch_count;index++)
+                    {
+                        mouse_x[index] = floor(event.touches[index].clientX);
+                        mouse_y[index] = floor(event.touches[index].clientY);
+                    }
+                    salida11 = event.type;
+                    if(event.type == "touchstart"){mouse_down()}
+                    objeto_estado()
+                }
+            }
+            else
+            {
+                element.addEventListener("mousedown", mouseMoveHandler, false);
+                element.addEventListener("mousemove", mouseMoveHandler, false);
+                element.addEventListener("mouseup", mouseMoveHandler, false);
+                function mouseMoveHandler(event)
+                {
+                    mouse_x = [0,0,0,0,0,0,0,0,0,0];
+                    mouse_y = [0,0,0,0,0,0,0,0,0,0];
+                    mouse_x[0] = event.clientX
+                    mouse_y[0] = event.clientY
+                    salida11 = event.type;
+                    if(event.type == "mousedown"){touch_count = 1; mouse_down()}
+                    if(event.type == "mouseup"){touch_count = 0}
+                    objeto_estado()
+                }
+            }
+        }
+        ajustar_mouse(document)
+        //////////////////////////////////////////////////////////////////////////// 
+        }
+
+        function mouse_down(){
+            salida11+=" --> down";
+            for(index=0;index<list_gamePads.length; index++)
+            {
+                var object = list_gamePads
+[index]
+                var element = object.element
+                var left = datos_elemento(element, "left");
+                var top = datos_elemento(element, "top");
+                var w = datos_elemento(element, "width");
+                var h = datos_elemento(element, "height");
+                left -= w/2;
+                top -= w/2;
+                h+=w;
+                w+=w;
+                var estado = "fuera";
+                    for(index2=0; index2<touch_count;index2++)
+                    {
+                        var mx = mouse_x[index2];
+                        var my = mouse_y[index2];
+                        if(mx>left && mx<(left+w) && my>(top) && my<(top+h))
+                        {
+                            object.activo = true;
+                            object.mouse_index = index2;
+                            centro_x = left+w/2;
+                            centro_y = top+h/2;
+                            eje_x_prev = mx-(left+w/2);
+                            eje_y_prev = my-(top+h/2);
+                            object.eje_x = eje_x_prev*250/(w/2);
+                            object.eje_y = eje_y_prev*250/(h/2);
+                            if(object.eje_x>100){object.eje_x=100}
+                            if(object.eje_x<-100){object.eje_x=-100}
+                            if(object.eje_y>100){object.eje_y=100}
+                            if(object.eje_y<-100){object.eje_y=-100}
+                            ajustar_palanca(object);
+                        }
+                    }
+            }
+        }
+
+        function objeto_estado()
+        {
+            for(index=0;index<list_gamePads.length; index++)
+            {
+                var object = list_gamePads
+[index]
+                if(object.activo)
+                {
+                    var element = object.element
+                    var left = datos_elemento(element, "left");
+                    var top = datos_elemento(element, "top");
+                    var w = datos_elemento(element, "width");
+                    var h = datos_elemento(element, "height");
+                    left -= w/2;
+                    top -= w/2;
+                    h+=w;
+                    w+=w;
+                    var estado = "fuera";
+                    for(index2=0; index2<touch_count;index2++)
+                    {
+                        var mx = mouse_x[index2];
+                        var my = mouse_y[index2];
+                        if(mx>left && mx<(left+w) && my>(top) && my<(top+h))
+                        {
+                            estado = "dentro";
+                            object.mouse_index = index2;
+                            eje_x_prev = mx-(left+w/2);
+                            eje_y_prev = my-(top+h/2);
+                            object.eje_x = eje_x_prev*250/(w/2);
+                            object.eje_y = eje_y_prev*250/(h/2);
+                            if(object.eje_x>100){object.eje_x=100}
+                            if(object.eje_x<-100){object.eje_x=-100}
+                            if(object.eje_y>100){object.eje_y=100}
+                            if(object.eje_y<-100){object.eje_y=-100}
+                            ajustar_palanca(object);
+                        }
+                    }
+                    if(estado == "fuera")
+                    {
+                        object.activo = false;
+                        object.mouse_index = -1;
+                        object.eje_x = 0;
+                        object.eje_y = 0;
+                        ajustar_palanca(object);
+                    }
+                }
+            }
+        }
+
+        }//Fin funciones.
+
+        function crear_joystick(posicion, color){
+            var object = instance_create("joystick", object_model, 15, 15);
+            var element = object.element
+            object.element_palanca = document.getElementById(`palanca_`+object.index);
+            object.element_palanca.style.background = color;
+            var left = "none";
+            var right = "none";
+            var top = "none";
+            var bottom = "none";
+            element.style.border = `2px solid ${color}`
+            if(posicion == 0){left = "5%"; bottom = "5%"}
+            if(posicion == 1){left = "5%"; top = "5%"}
+            if(posicion == 2){right = "5%"; top = "5%"}
+            if(posicion == 3){right = "5%"; bottom = "5%"}
+            element.style.left = left;
+            element.style.right = right;
+            element.style.top = top;
+            element.style.bottom = bottom;}
+
+        function ajustar_palanca(object){
+            var palanca = object.element_palanca;
+                centro_x = 30;
+                centro_y = 30;
+                pos_x = object.eje_x*40/100;
+                pos_y = object.eje_y*40/100;
+                palanca.style.left = centro_x+pos_x+"%";
+                palanca.style.top = centro_y+pos_y+"%";}
+
+        //Creando elementos y objetos
+        {
+            object_model = {x: 0,y: 0,w: 0,h: 0, activo: false, mouse_index: -1, eje_x: 0, eje_y: 0};
+            colores = ["fuchsia","lime","orange","blue"];
+            list_cajas = []
+            for(index=0; index<4; index++){
+                 crear_joystick(index, colores[index]);
+                 crear_caja(index);
+                }
+        }
+
+        function crear_caja(index)
+        {
+            list_cajas.push({element: document.getElementById("caja"+index),x:window.innerWidth/2,y:window.innerHeight/4})
+            var movimiento = 6*index*window.innerWidth/100;
+            if(window.innerHeight>window.innerWidth){movimiento=6*index*window.innerHeight/100}
+            list_cajas[index].y+=movimiento
+            var element = list_cajas[index].element;
+            element.style.background = colores[index];
+            agregar_elemento(element, 5, 5);
+        }
+
+        function mover_caja()
+        {
+            for(index=0;index<list_cajas.length; index++)
+            {
+                var object = list_cajas[index];
+                var element = object.element;
+                if(list_gamePads[index].activo)
+                {
+                    object.x+=list_gamePads[index].eje_x*10/100;
+                    object.y+=list_gamePads[index].eje_y*10/100;
+                    var w = datos_elemento(element,"width");
+                    var h = datos_elemento(element,"height");
+                    if(object.x<0){object.x=0}
+                    if(object.x>ventana.width-w){object.x=ventana.width-w}
+                    if(object.y<0){object.y=0}
+                    if(object.y>ventana.height-h){object.y=ventana.height-h}
+                }
+                element.style.left = object.x+"px";
+                element.style.top = object.y+"px";
+            }
+        }
+
+
+        //Ejecución constante.
+        {
+            //Se usa para crear un ciclo, es fundamental para video juegos y representa al evento Draw en game maker.
+            setInterval(function x(){ejecucionConstante()}, 1000/30);
+            function ejecucionConstante(){
+            mover_caja();
+            }
+        }
+
+        //Fin script
+        ajustar_ventana();
+        </script>
+
+        <!----_Boton full screen--------->
+        <div id="full_screen_button"></div>
+        <style>
+        #full_screen_button{background: transparent; width: 5vw;height: 5vw;position: absolute;text-align: center;top: 5px;right: 5px;border: 2px solid white;border-radius: 5px;}
+        </style>
+        <script>
+            {
+        color = "white";
+        full_screen_button = document.getElementById("full_screen_button");
+        full_screen_button.style.border="2px solid "+color;
+        function ajustar_full_screen(){var medida = 2*window.innerWidth/100;if(medida<32){medida=32};if(window.innerWidth<window.innerHeight){medida = 2*window.innerHeight/100; if(medida<64){medida=64}} ;full_screen_button.style.width = medida+"px";full_screen_button.style.height = medida+"px";full_screen_button.style.fontSize = medida/1.5+"px";}
+        ajustar_full_screen();
+        window.addEventListener("resize", function(){ajustar_full_screen()})
+        var touchDevice = ('ontouchstart' in document.documentElement);
+        if(touchDevice){full_screen_button.addEventListener("touchstart", function(){toggleFullScreen()},false);}else{
+        full_screen_button.addEventListener("mousedown", function(){toggleFullScreen()},false);}
+        function toggleFullScreen() {
+                if ((document.fullScreenElement && document.fullScreenElement !== null) ||   
+                (!document.mozFullScreen && !document.webkitIsFullScreen)) {
+                if (document.documentElement.requestFullScreen) {
+                document.documentElement.requestFullScreen();
+                    } else if (document.documentElement.mozRequestFullScreen) {
+                document.documentElement.mozRequestFullScreen();
+                } else if (document.documentElement.webkitRequestFullScreen) {
+                document.documentElement.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
+                }
+                } else {
+                if (document.cancelFullScreen) {
+                document.cancelFullScreen();
+                } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+                } else if (document.webkitCancelFullScreen) {
+                document.webkitCancelFullScreen();
+            }}}
+        }
+        </script>
+        <!--Final full screen button-->
+
+        <button></button>
+    </body>
+</html>
